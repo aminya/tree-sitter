@@ -55,7 +55,7 @@ fn main() {
         .warnings(false)
         .file(src_path.join("lib.c"));
 
-    if env::var("OPT_LEVEL").unwrap_or_default() == "3" {
+    if env::var("OPT_LEVEL").unwrap_or("3".to_string()) == "3" {
         let compiler = config.get_compiler();
         if compiler.is_like_msvc() {
             config.opt_level_str("/O2");
@@ -66,6 +66,9 @@ fn main() {
                 .flag("/Gw") // optimize global data
                 .flag("/GA") // optimize thread-local storage
                 .flag("/DNDEBUG"); // turn off debug asserts
+        // lld-link is invoked by Rust in the end, so these do not work
+        // .flag("/LTCG") // link time code generation
+        // .flag("/GL") // whole program optimization
         } else if compiler.is_like_clang() || compiler.is_like_gnu() {
             config.opt_level_str("fast");
         }
