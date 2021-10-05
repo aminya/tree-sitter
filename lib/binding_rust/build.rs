@@ -38,6 +38,7 @@ fn main() {
         println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
     }
 
+    let mut config = cc::Build::new();
     config
         .std("c11")
         .flag_if_supported("-fvisibility=hidden")
@@ -52,8 +53,25 @@ fn main() {
         .define("_BSD_SOURCE", None)
         .define("_DARWIN_C_SOURCE", None)
         .warnings(false)
-        .file(src_path.join("lib.c"))
-        .compile("tree-sitter");
+        .file(src_path.join("lib.c"));
+
+    if env::var("OPT_LEVEL").unwrap_or_default() == "3" {
+        let compiler = config.get_compiler();
+        if compiler.is_like_msvc() {
+            config.opt_level_str("/O2");
+            config
+                .flag("/Ob3") // aggressive inline
+                .flag("/GF") // duplicate string elimination
+                .flag("/GR-") // do not generate runtime type information
+                .flag("/Gw") // optimize global data
+                .flag("/GA") // optimize thread-local storage
+                .flag("/DNDEBUG"); // turn off debug asserts
+        } else if compiler.is_like_clang() || compiler.is_like_gnu() {
+            config.opt_level_str("fast");
+        }
+    }
+
+    config.compile("tree-sitter");
 
     println!("cargo:include={}", include_path.display());
 }
