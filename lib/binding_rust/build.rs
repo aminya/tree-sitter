@@ -46,7 +46,7 @@ fn main() {
         .file(src_path.join("lib.c"))
         .compile("tree-sitter");
 
-    if !cfg!(debug_assertions) {
+    if env::var("OPT_LEVEL").unwrap_or("3".to_string()) == "3" {
         let compiler = config.get_compiler();
         if compiler.is_like_msvc() {
             config.opt_level_str("/O2");
