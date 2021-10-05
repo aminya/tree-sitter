@@ -47,7 +47,8 @@ fn main() {
         .compile("tree-sitter");
 
     if !cfg!(debug_assertions) {
-        if cfg!(target_env = "msvc") {
+        let compiler = config.get_compiler();
+        if compiler.is_like_msvc() {
             config.opt_level_str("/O2");
             config
                 .flag("/Ob3") // aggressive inline
@@ -57,10 +58,10 @@ fn main() {
                 .flag("/GA") // optimize thread-local storage
                 .flag("/DNDEBUG"); // turn off debug asserts
 
-        // if lto and rustflags = ["-C", "linker=lld"] are used, lld-link is invoked by Rust in the end, so these do not work
+        // lld-link is invoked by Rust in the end, so these do not work
         // .flag("/LTCG") // link time code generation
         // .flag("/GL") // whole program optimization
-        } else {
+        } else if compiler.is_like_clang() || compiler.is_like_gnu() {
             config.opt_level_str("fast");
         }
     }
