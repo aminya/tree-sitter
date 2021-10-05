@@ -34,8 +34,9 @@ fn main() {
         println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
     }
 
+    let mut config = cc::Build::new();
     config
-        .flag_if_supported("-std=c99")
+        .flag_if_supported("-std=c17")
         .flag_if_supported("-fvisibility=hidden")
         .flag_if_supported("-Wshadow")
         .flag_if_supported("-Wno-unused-parameter")
@@ -44,6 +45,25 @@ fn main() {
         .include("include")
         .file(src_path.join("lib.c"))
         .compile("tree-sitter");
+
+    if !cfg!(debug_assertions) {
+        if cfg!(target_env = "msvc") {
+            config.opt_level_str("/O2");
+            config
+                .flag("/Ob3") // aggressive inline
+                .flag("/GF") // duplicate string elimination
+                .flag("/GR-") // do not generate runtime type information
+                .flag("/Gw") // optimize global data
+                .flag("/GA") // optimize thread-local storage
+                .flag("/DNDEBUG"); // turn off debug asserts
+
+        // if lto and rustflags = ["-C", "linker=lld"] are used, lld-link is invoked by Rust in the end, so these do not work
+        // .flag("/LTCG") // link time code generation
+        // .flag("/GL") // whole program optimization
+        } else {
+            config.opt_level_str("fast");
+        }
+    }
 }
 
 #[cfg(feature = "bindgen")]
