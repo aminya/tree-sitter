@@ -444,72 +444,17 @@ impl<'a> HighlightIterLayer<'a> {
                     .parse(source, None)
                     .ok_or(Error::Cancelled)?;
                 unsafe { highlighter.parser.set_cancellation_flag(None) };
-                let mut cursor = highlighter.cursors.pop().unwrap_or(QueryCursor::new());
-
-                // Process combined injections.
-                if let Some(combined_injections_query) = &config.combined_injections_query {
-                    let mut injections_by_pattern_index =
-                        vec![(None, Vec::new(), false); combined_injections_query.pattern_count()];
-                    let matches =
-                        cursor.matches(combined_injections_query, tree.root_node(), source);
-                    for mat in matches {
-                        let entry = &mut injections_by_pattern_index[mat.pattern_index];
-                        let (language_name, content_node, include_children) = injection_for_match(
-                            config,
-                            parent_name,
-                            combined_injections_query,
-                            &mat,
-                            source,
-                        );
-                        if language_name.is_some() {
-                            entry.0 = language_name;
-                        }
-                        if let Some(content_node) = content_node {
-                            entry.1.push(content_node);
-                        }
-                        entry.2 = include_children;
-                    }
-                    for (lang_name, content_nodes, includes_children) in injections_by_pattern_index
-                    {
-                        if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
-                            if let Some(next_config) = (injection_callback)(lang_name) {
-                                let ranges = Self::intersect_ranges(
-                                    &ranges,
-                                    &content_nodes,
-                                    includes_children,
-                                );
-                                if !ranges.is_empty() {
-                                    queue.push((next_config, depth + 1, ranges));
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
-                // prevents them from being moved. But both of these values are really just
-                // pointers, so it's actually ok to move them.
-                let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(&tree) };
-                let cursor_ref =
-                    unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
-                let captures = cursor_ref
-                    .captures(&config.query, tree_ref.root_node(), source)
-                    .peekable();
-
-                result.push(HighlightIterLayer {
-                    highlight_end_stack: Vec::new(),
-                    scope_stack: vec![LocalScope {
-                        inherits: false,
-                        range: 0..usize::MAX,
-                        local_defs: Vec::new(),
-                    }],
-                    cursor,
-                    depth,
-                    _tree: tree,
-                    captures,
+                result.push(HighlightIterLayer::new_element(
+                    tree,
+                    source,
+                    highlighter,
+                    injection_callback,
                     config,
+                    depth,
                     ranges,
-                });
+                    parent_name,
+                    &mut queue,
+                ));
             }
 
             if queue.is_empty() {
@@ -523,6 +468,75 @@ impl<'a> HighlightIterLayer<'a> {
         }
 
         Ok(result)
+    }
+
+    fn new_element<F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a>(
+        tree: Tree,
+        source: &'a [u8],
+        highlighter: &mut Highlighter,
+        injection_callback: &mut F,
+        config: &'a HighlightConfiguration,
+        depth: usize,
+        ranges: Vec<Range>,
+        parent_name: Option<&str>,
+        queue: &mut Vec<(&'a HighlightConfiguration, usize, Vec<Range>)>,
+    ) -> HighlightIterLayer<'a> {
+        let mut cursor = highlighter.cursors.pop().unwrap_or(QueryCursor::new());
+        if let Some(combined_injections_query) = &config.combined_injections_query {
+            let mut injections_by_pattern_index =
+                vec![(None, Vec::new(), false); combined_injections_query.pattern_count()];
+            let matches = cursor.matches(combined_injections_query, tree.root_node(), source);
+            for mat in matches {
+                let entry = &mut injections_by_pattern_index[mat.pattern_index];
+                let (language_name, content_node, include_children) = injection_for_match(
+                    config,
+                    parent_name,
+                    combined_injections_query,
+                    &mat,
+                    source,
+                );
+                if language_name.is_some() {
+                    entry.0 = language_name;
+                }
+                if let Some(content_node) = content_node {
+                    entry.1.push(content_node);
+                }
+                entry.2 = include_children;
+            }
+            for (lang_name, content_nodes, includes_children) in injections_by_pattern_index {
+                if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
+                    if let Some(next_config) = (injection_callback)(lang_name) {
+                        let ranges =
+                            Self::intersect_ranges(&ranges, &content_nodes, includes_children);
+                        if !ranges.is_empty() {
+                            queue.push((next_config, depth + 1, ranges));
+                        }
+                    }
+                }
+            }
+        }
+        // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
+        // prevents them from being moved. But both of these values are really just
+        // pointers, so it's actually ok to move them.
+        let tree_ref = unsafe { mem::transmute::<_, &'static Tree>(&tree) };
+        let cursor_ref = unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
+        let captures = cursor_ref
+            .captures(&config.query, tree_ref.root_node(), source)
+            .peekable();
+        HighlightIterLayer {
+            highlight_end_stack: Vec::new(),
+            scope_stack: vec![LocalScope {
+                inherits: false,
+                range: 0..usize::MAX,
+                local_defs: Vec::new(),
+            }],
+            cursor,
+            depth,
+            _tree: tree,
+            captures,
+            config,
+            ranges,
+        }
     }
 
     // Compute the ranges that should be included when parsing an injection.
