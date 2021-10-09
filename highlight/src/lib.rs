@@ -378,6 +378,49 @@ impl<'a> HighlightIterLayer<'a> {
         Ok(result)
     }
 
+    /// Create a new 'layer' of highlighting with the given tree. It is assumed that the language of highlighter is already set.
+    ///
+    /// In the even that the new layer contains "combined injections" (injections where multiple
+    /// disjoint ranges are parsed as one syntax tree), these will be eagerly processed and
+    /// added to the returned vector.
+    fn from_tree<F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a>(
+        tree: Tree,
+        source: &'a [u8],
+        highlighter: &mut Highlighter,
+        injection_callback: &mut F,
+        mut config: &'a HighlightConfiguration,
+        mut depth: usize,
+        mut ranges: Vec<Range>,
+    ) -> Result<Vec<Self>, Error> {
+        let mut result = Vec::with_capacity(1);
+        let mut queue = Vec::new();
+        loop {
+            if highlighter.parser.set_included_ranges(&ranges).is_ok() {
+                result.push(HighlightIterLayer::new_element(
+                    tree.clone(),
+                    source,
+                    highlighter,
+                    injection_callback,
+                    config,
+                    depth,
+                    ranges,
+                    &mut queue,
+                ));
+            }
+
+            if queue.is_empty() {
+                break;
+            } else {
+                let (next_config, next_depth, next_ranges) = queue.remove(0);
+                config = next_config;
+                depth = next_depth;
+                ranges = next_ranges;
+            }
+        }
+
+        Ok(result)
+    }
+
     fn new_element<F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a>(
         tree: Tree,
         source: &'a [u8],
