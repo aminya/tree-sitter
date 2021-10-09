@@ -147,6 +147,19 @@ impl Highlighter {
                 end_point: Point::new(usize::MAX, usize::MAX),
             }],
         )?;
+        Ok(self.highlight_iter(layers, source, injection_callback, cancellation_flag))
+    }
+
+    fn highlight_iter<'a, F>(
+        &'a mut self,
+        layers: Vec<HighlightIterLayer<'a>>,
+        source: &'a [u8],
+        injection_callback: F,
+        cancellation_flag: Option<&'a AtomicUsize>,
+    ) -> HighlightIter<F>
+    where
+        F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
+    {
         assert_ne!(layers.len(), 0);
         let mut result = HighlightIter {
             source,
@@ -160,7 +173,7 @@ impl Highlighter {
             last_highlight_range: None,
         };
         result.sort_layers();
-        Ok(result)
+        result
     }
 }
 
