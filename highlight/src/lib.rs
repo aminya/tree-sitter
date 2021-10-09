@@ -215,6 +215,26 @@ impl Highlighter {
                 end_point: Point::new(usize::MAX, usize::MAX),
             }],
         )?;
+        Ok(self.highlight_iter(
+            layers,
+            config,
+            source,
+            injection_callback,
+            cancellation_flag,
+        ))
+    }
+
+    fn highlight_iter<'a, F>(
+        &'a mut self,
+        layers: Vec<HighlightIterLayer<'a>>,
+        config: &'a HighlightConfiguration,
+        source: &'a [u8],
+        injection_callback: F,
+        cancellation_flag: Option<&'a AtomicUsize>,
+    ) -> HighlightIter<F>
+    where
+        F: FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
+    {
         assert_ne!(layers.len(), 0);
         let mut result = HighlightIter {
             source,
@@ -230,7 +250,39 @@ impl Highlighter {
             apply_all_captures: config.apply_all_captures,
         };
         result.sort_layers();
-        Ok(result)
+        result
+    }
+
+    /// Iterate over the highlighted regions for a given tree and slice of source code.
+    pub fn highlight_tree<'a>(
+        &'a mut self,
+        tree: Tree,
+        config: &'a HighlightConfiguration,
+        source: &'a [u8],
+        cancellation_flag: Option<&'a AtomicUsize>,
+        mut injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
+    ) -> Result<impl Iterator<Item = Result<HighlightEvent, Error>> + 'a, Error> {
+        let layers = HighlightIterLayer::from_tree(
+            tree,
+            source,
+            self,
+            &mut injection_callback,
+            config,
+            0,
+            vec![Range {
+                start_byte: 0,
+                end_byte: usize::MAX,
+                start_point: Point::new(0, 0),
+                end_point: Point::new(usize::MAX, usize::MAX),
+            }],
+        )?;
+        Ok(self.highlight_iter(
+            layers,
+            config,
+            source,
+            injection_callback,
+            cancellation_flag,
+        ))
     }
 }
 
