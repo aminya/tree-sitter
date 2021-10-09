@@ -175,6 +175,32 @@ impl Highlighter {
         result.sort_layers();
         result
     }
+
+    /// Iterate over the highlighted regions for a given tree and slice of source code.
+    pub fn highlight_tree<'a>(
+        &'a mut self,
+        tree: Tree,
+        config: &'a HighlightConfiguration,
+        source: &'a [u8],
+        cancellation_flag: Option<&'a AtomicUsize>,
+        mut injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
+    ) -> Result<impl Iterator<Item = Result<HighlightEvent, Error>> + 'a, Error> {
+        let layers = HighlightIterLayer::from_tree(
+            tree,
+            source,
+            self,
+            &mut injection_callback,
+            config,
+            0,
+            vec![Range {
+                start_byte: 0,
+                end_byte: usize::MAX,
+                start_point: Point::new(0, 0),
+                end_point: Point::new(usize::MAX, usize::MAX),
+            }],
+        )?;
+        Ok(self.highlight_iter(layers, source, injection_callback, cancellation_flag))
+    }
 }
 
 impl HighlightConfiguration {
