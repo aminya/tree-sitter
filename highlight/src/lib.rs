@@ -188,6 +188,13 @@ impl Highlighter {
         }
     }
 
+    pub fn from_parser(parser: Parser) -> Self {
+        Highlighter {
+            parser,
+            cursors: Vec::new(),
+        }
+    }
+
     pub fn parser(&mut self) -> &mut Parser {
         &mut self.parser
     }
