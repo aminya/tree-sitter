@@ -1154,7 +1154,14 @@ fn run_tests(
 
             if let Some(file_path) = file_path {
                 if opts.update {
-                    write_tests(&file_path, corrected_entries)?;
+                    if file_path
+                        .file_name()
+                        .is_some_and(|name| name.to_string_lossy().ends_with(".tsout.scm"))
+                    {
+                        write_test_output_file(&file_path, corrected_entries)?;
+                    } else {
+                        write_tests(&file_path, corrected_entries)?;
+                    }
                 }
                 corrected_entries.clear();
             }
@@ -1221,6 +1228,14 @@ fn write_tests(file_path: &Path, corrected_entries: &[TestCorrection]) -> Result
     write_tests_to_buffer(&mut buffer, corrected_entries)
 }
 
+fn write_test_output_file(file_path: &Path, corrected_entries: &[TestCorrection]) -> Result<()> {
+    if corrected_entries.len() != 1 {
+        return Err(anyhow!("The output file should have one test entry"));
+    }
+    fs::write(file_path, format!("{}\n", corrected_entries[0].output.trim()))?;
+    Ok(())
+}
+
 fn write_tests_to_buffer(
     buffer: &mut impl Write,
     corrected_entries: &[TestCorrection],
@@ -1265,9 +1280,23 @@ pub fn parse_tests(path: &Path) -> io::Result<TestEntry> {
         .to_string();
     if path.is_dir() {
         let mut children = Vec::new();
+        let mut children_inputs: Vec<(PathBuf, String)> = Vec::new();
+        let mut children_outputs: Vec<(PathBuf, String)> = Vec::new();
         for entry in fs::read_dir(path)? {
             let entry = entry?;
-            let hidden = entry.file_name().to_str().unwrap_or("").starts_with('.');
+            let file_name = entry.file_name();
+            let file_name_str = file_name.to_str().unwrap_or("");
+
+            if let Some(test_name) = file_name_str.strip_suffix(".tsout.scm") {
+                children_outputs.push((entry.path(), test_name.to_string()));
+                continue;
+            }
+            if let Some(test_name) = separate_test_input_name(file_name_str) {
+                children_inputs.push((entry.path(), test_name.to_string()));
+                continue;
+            }
+
+            let hidden = file_name_str.starts_with('.');
             if !hidden {
                 children.push(entry.path());
             }
@@ -1277,10 +1306,56 @@ pub fn parse_tests(path: &Path) -> io::Result<TestEntry> {
                 .unwrap_or_default()
                 .cmp(b.file_name().unwrap_or_default())
         });
-        let children = children
+        let mut children = children
             .iter()
             .map(|path| parse_tests(path))
             .collect::<io::Result<Vec<TestEntry>>>()?;
+
+        for (input_path, input_name) in children_inputs {
+            let output_path = children_outputs
+                .iter()
+                .find(|(_, output_name)| output_name == &input_name)
+                .map(|(path, _)| path)
+                .ok_or_else(|| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!(
+                            "No tsout.scm output file for the input path {}",
+                            input_path.display()
+                        ),
+                    )
+                })?;
+
+            let mut input = fs::read(&input_path)?;
+            if input.last() == Some(&b'\n') {
+                input.pop();
+            }
+            if input.last() == Some(&b'\r') {
+                input.pop();
+            }
+            let output_content = fs::read_to_string(output_path)?;
+            let (output, has_fields) = normalize_sexp_output(&output_content);
+            let file_name = input_path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned());
+            let example = TestEntry::Example {
+                name: input_name.clone(),
+                input,
+                output,
+                header_delim_len: 0,
+                divider_delim_len: 0,
+                has_fields,
+                attributes_str: String::new(),
+                attributes: TestAttributes::default(),
+                file_name,
+            };
+            children.push(TestEntry::Group {
+                name: input_name,
+                children: vec![example],
+                file_path: Some(output_path.clone()),
+            });
+        }
+
         Ok(TestEntry::Group {
             name,
             children,
@@ -1290,6 +1365,14 @@ pub fn parse_tests(path: &Path) -> io::Result<TestEntry> {
         let content = fs::read_to_string(path)?;
         Ok(parse_test_content(name, &content, Some(path.to_path_buf())))
     }
+}
+
+fn separate_test_input_name(file_name: &str) -> Option<&str> {
+    let (test_name, extension) = file_name.rsplit_once(".tsin.")?;
+    extension
+        .chars()
+        .all(|character| character.is_alphanumeric() || character == '_')
+        .then_some(test_name)
 }
 
 /// Replace ` word: (` with ` (` throughout the string.
