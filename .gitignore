@@ -21,6 +21,8 @@ docs/assets/js/tree-sitter.js
 /tree-sitter.pc
 
 /target
+build/
+.cache/
 *.rs.bk
 *.a
 *.dylib

@@ -137,7 +137,11 @@ format:
 	cargo fmt --all
 	taplo format
 
+cmake:
+	cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_BUILD_TYPE=Release
+	cmake --build build --config Release
+
 changelog:
 	@git-cliff --config .github/cliff.toml --prepend CHANGELOG.md --latest --github-token $(shell gh auth token)
 
-.PHONY: test test-wasm lint format changelog
+.PHONY: test test-wasm lint format cmake changelog
