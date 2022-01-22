@@ -16,6 +16,8 @@ node_modules
 docs/assets/js/tree-sitter.js
 
 /target
+build/
+.cache/
 *.rs.bk
 *.a
 *.dylib
