@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef uint64_t TSDuration;
 
