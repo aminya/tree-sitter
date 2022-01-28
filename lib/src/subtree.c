@@ -982,7 +982,7 @@ static size_t ts_subtree__write_to_string(
   }
 
   array_delete(&stack);
-  return cursor - string;
+  return (size_t)(cursor - string);
 }
 
 char *ts_subtree_string(
