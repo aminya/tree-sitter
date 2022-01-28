@@ -7,6 +7,9 @@
 extern "C" {
 #endif
 
+#include "./length.h"
+#include "./subtree.h"
+
 typedef struct {
   const Subtree *child;
   const Subtree *parent;
