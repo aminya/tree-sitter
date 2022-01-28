@@ -850,7 +850,7 @@ static size_t ts_subtree__write_to_string(
   const TSLanguage *language, bool include_all,
   TSSymbol alias_symbol, bool alias_is_named, const char *field_name
 ) {
-  if (!self.ptr) return snprintf(string, limit, "(NULL)");
+  if (!self.ptr) return (size_t)snprintf(string, limit, "(NULL)");
 
   char *cursor = string;
   char **writer = (limit > 1) ? &cursor : &string;
@@ -942,7 +942,7 @@ static size_t ts_subtree__write_to_string(
 
   if (is_visible) cursor += snprintf(*writer, limit, ")");
 
-  return cursor - string;
+  return (size_t)(cursor - string);
 }
 
 char *ts_subtree_string(
