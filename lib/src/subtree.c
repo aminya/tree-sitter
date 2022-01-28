@@ -705,10 +705,10 @@ Subtree ts_subtree_edit(Subtree self, const TSInputEdit *edit, SubtreePool *pool
 
     if (result.data.is_inline) {
       if (ts_subtree_can_inline(padding, size, lookahead_bytes)) {
-        result.data.padding_bytes = padding.bytes;
-        result.data.padding_rows = padding.extent.row;
-        result.data.padding_columns = padding.extent.column;
-        result.data.size_bytes = size.bytes;
+        result.data.padding_bytes = (uint8_t)padding.bytes;
+        result.data.padding_rows = (uint8_t)padding.extent.row;
+        result.data.padding_columns = (uint8_t)padding.extent.column;
+        result.data.size_bytes = (uint8_t)size.bytes;
       } else {
         SubtreeHeapData *data = ts_subtree_pool_allocate(pool);
         data->ref_count = 1;
