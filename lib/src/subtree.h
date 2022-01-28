@@ -199,8 +199,8 @@ Subtree ts_subtree_new_error(
 );
 MutableSubtree ts_subtree_new_node(
   TSSymbol symbol,
-  SubtreeArray *chiildren,
-  unsigned production_id,
+  SubtreeArray *children,
+  uint16_t production_id,
   const TSLanguage *language
 );
 Subtree ts_subtree_new_error_node(
