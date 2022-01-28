@@ -180,12 +180,12 @@ Subtree ts_subtree_new_leaf(
   if (is_inline) {
     return (Subtree) {{
       .parse_state = parse_state,
-      .symbol = symbol,
-      .padding_bytes = padding.bytes,
-      .padding_rows = padding.extent.row,
-      .padding_columns = padding.extent.column,
-      .size_bytes = size.bytes,
-      .lookahead_bytes = lookahead_bytes,
+      .symbol = (uint8_t)symbol,
+      .padding_bytes = (uint8_t)padding.bytes,
+      .padding_rows = (uint8_t)padding.extent.row,
+      .padding_columns = (uint8_t)padding.extent.column,
+      .size_bytes = (uint8_t)size.bytes,
+      .lookahead_bytes = (uint8_t)lookahead_bytes,
       .visible = metadata.visible,
       .named = metadata.named,
       .extra = extra,
