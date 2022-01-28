@@ -811,7 +811,7 @@ Subtree ts_subtree_last_external_token(Subtree tree) {
   return tree;
 }
 
-static size_t ts_subtree__write_char_to_string(char *s, size_t n, int32_t c) {
+static int ts_subtree__write_char_to_string(char *s, size_t n, int32_t c) {
   if (c == -1)
     return snprintf(s, n, "INVALID");
   else if (c == '\0')
