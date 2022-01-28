@@ -503,7 +503,7 @@ void ts_subtree_summarize_children(
 MutableSubtree ts_subtree_new_node(
   TSSymbol symbol,
   SubtreeArray *children,
-  unsigned production_id,
+  uint16_t production_id,
   const TSLanguage *language
 ) {
   TSSymbolMetadata metadata = ts_language_symbol_metadata(language, symbol);

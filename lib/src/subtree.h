@@ -194,7 +194,7 @@ Subtree ts_subtree_new_leaf(
 Subtree ts_subtree_new_error(
   SubtreePool *, int32_t, Length, Length, uint32_t, TSStateId, const TSLanguage *
 );
-MutableSubtree ts_subtree_new_node(TSSymbol, SubtreeArray *, unsigned, const TSLanguage *);
+MutableSubtree ts_subtree_new_node(TSSymbol, SubtreeArray *, uint16_t, const TSLanguage *);
 Subtree ts_subtree_new_error_node(SubtreeArray *, bool, const TSLanguage *);
 Subtree ts_subtree_new_missing_leaf(SubtreePool *, TSSymbol, Length, uint32_t, const TSLanguage *);
 MutableSubtree ts_subtree_make_mut(SubtreePool *, Subtree);
