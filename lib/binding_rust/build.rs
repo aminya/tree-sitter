@@ -35,6 +35,21 @@ fn main() {
     }
 
     let mut config = cc::Build::new();
+
+    #[cfg(feature = "logging_lexer")]
+    config.define("DEBUG_LEXER", None);
+
+    #[cfg(feature = "logging_parser")]
+    config.define("DEBUG_PARSER", None);
+
+    #[cfg(feature = "logging_query")]
+    config
+        .define("DEBUG_ANALYZE_QUERY", None)
+        .define("DEBUG_EXECUTE_QUERY", None);
+
+    #[cfg(feature = "logging_changed_ranges")]
+    config.define("DEBUG_GET_CHANGED_RANGES", None);
+
     config
         .flag_if_supported("-std=c17")
         .flag_if_supported("-fvisibility=hidden")
