@@ -7,6 +7,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#ifndef DEBUG_LEXER
+#define LOG(message, character)
+#else
 #define LOG(message, character)              \
   if (self->logger.log) {                    \
     snprintf(                                \
@@ -23,6 +26,7 @@
       self->debug_buffer                     \
     );                                       \
   }
+#endif
 
 static const int32_t BYTE_ORDER_MARK = 0xFEFF;
 

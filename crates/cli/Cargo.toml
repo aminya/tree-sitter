@@ -32,6 +32,11 @@ name = "benchmark"
 default = [ "qjs-rt" ]
 qjs-rt = [ "tree-sitter-generate/qjs-rt" ]
 wasm = [ "tree-sitter/wasm", "tree-sitter-loader/wasm" ]
+logging_lexer = [ "tree-sitter/logging_lexer" ]
+logging_parser = [ "tree-sitter/logging_parser" ]
+logging_query = [ "tree-sitter/logging_query" ]
+logging_changed_ranges = [ "tree-sitter/logging_changed_ranges" ]
+logging = [ "tree-sitter/logging" ]
 
 [dependencies]
 ansi_colours.workspace = true

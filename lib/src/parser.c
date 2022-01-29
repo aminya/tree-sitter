@@ -18,6 +18,12 @@
 #include "./ts_assert.h"
 #include "./wasm_store.h"
 
+#ifndef DEBUG_PARSER
+#define LOG(...)
+#define LOG_LOOKAHEAD(symbol_name, size)
+#define LOG_STACK()
+#define LOG_TREE(tree)
+#else
 #define LOG(...)                                                                            \
   if (self->lexer.logger.log || self->dot_graph_file) {                                     \
     snprintf(self->lexer.debug_buffer, TREE_SITTER_SERIALIZATION_BUFFER_SIZE, __VA_ARGS__); \
@@ -69,6 +75,7 @@
     ts_subtree_print_dot_graph(tree, self->language, self->dot_graph_file); \
     fputs("\n", self->dot_graph_file);                                      \
   }
+#endif
 
 #define SYM_NAME(symbol) ts_language_symbol_name(self->language, symbol)
 
@@ -154,6 +161,7 @@ static const char *ts_string_input_read(
 
 // Parser - Private
 
+#ifdef DEBUG_PARSER
 static void ts_parser__log(TSParser *self) {
   if (self->lexer.logger.log) {
     self->lexer.logger.log(
@@ -172,6 +180,7 @@ static void ts_parser__log(TSParser *self) {
     fprintf(self->dot_graph_file, "\"\n}\n\n");
   }
 }
+#endif
 
 static bool ts_parser__breakdown_top_of_stack(
   TSParser *self,
@@ -2156,12 +2165,14 @@ TSTree *ts_parser_parse(
         &self->included_range_differences
       );
       reusable_node_reset(&self->reusable_node, old_tree->root);
+#ifdef DEBUG_PARSER
       LOG("parse_after_edit");
       LOG_TREE(self->old_tree);
       for (unsigned i = 0; i < self->included_range_differences.size; i++) {
         TSRange *range = array_get(&self->included_range_differences, i);
         LOG("different_included_range %u - %u", range->start_byte, range->end_byte);
       }
+#endif
     } else {
       reusable_node_clear(&self->reusable_node);
       LOG("new_parse");

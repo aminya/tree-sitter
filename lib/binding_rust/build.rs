@@ -38,7 +38,20 @@ fn main() {
         println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
     }
 
-    let mut config = cc::Build::new();
+    #[cfg(feature = "logging_lexer")]
+    config.define("DEBUG_LEXER", None);
+
+    #[cfg(feature = "logging_parser")]
+    config.define("DEBUG_PARSER", None);
+
+    #[cfg(feature = "logging_query")]
+    config
+        .define("DEBUG_ANALYZE_QUERY", None)
+        .define("DEBUG_EXECUTE_QUERY", None);
+
+    #[cfg(feature = "logging_changed_ranges")]
+    config.define("DEBUG_GET_CHANGED_RANGES", None);
+
     config
         .std("c11")
         .flag_if_supported("-fvisibility=hidden")
