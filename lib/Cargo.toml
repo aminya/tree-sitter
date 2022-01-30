@@ -48,8 +48,8 @@ package = "wasmtime-c-api-impl"
 default-features = false
 
 [build-dependencies]
-bindgen = { version = "^0.66.1", optional = true }
-cc = "^1.0.79"
+bindgen = { version = "^0.69.1", optional = true }
+cc = { git = "https://github.com/aminya/cc-rs", rev = "d5e6412", features = ["parallel"] }
 
 [lib]
 path = "binding_rust/lib.rs"
