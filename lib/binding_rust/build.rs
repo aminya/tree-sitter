@@ -42,31 +42,12 @@ fn main() {
 
     config
         .flag_if_supported("-std=c17")
+        .opt_fast_release()
         .flag_if_supported("-Wno-unused-parameter")
         .include(src_path)
         .include("include")
         .file(src_path.join("lib.c"))
         .compile("tree-sitter");
-
-    if env::var("OPT_LEVEL").unwrap_or("3".to_string()) == "3" {
-        let compiler = config.get_compiler();
-        if compiler.is_like_msvc() {
-            config.opt_level_str("/O2");
-            config
-                .flag("/Ob3") // aggressive inline
-                .flag("/GF") // duplicate string elimination
-                .flag("/GR-") // do not generate runtime type information
-                .flag("/Gw") // optimize global data
-                .flag("/GA") // optimize thread-local storage
-                .flag("/DNDEBUG"); // turn off debug asserts
-
-        // lld-link is invoked by Rust in the end, so these do not work
-        // .flag("/LTCG") // link time code generation
-        // .flag("/GL") // whole program optimization
-        } else if compiler.is_like_clang() || compiler.is_like_gnu() {
-            config.opt_level_str("fast");
-        }
-    }
 }
 
 fn which(exe_name: impl AsRef<Path>) -> Option<PathBuf> {
