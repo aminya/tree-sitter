@@ -60,7 +60,7 @@ version = "48.0.2"
 
 [build-dependencies]
 bindgen = { optional = true, version = "0.72.1" }
-cc.workspace = true
+cc = { workspace = true, features = [ "parallel" ] }
 serde_json.workspace = true
 
 [lib]
