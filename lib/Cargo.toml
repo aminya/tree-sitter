@@ -33,7 +33,7 @@ lazy_static = { version = "1.2.0", optional = true }
 regex = "1"
 
 [build-dependencies]
-cc = { git = "https://github.com/aminya/cc-rs", rev = "74788d4" }
+cc = { git = "https://github.com/aminya/cc-rs", rev = "74788d4", features = ["parallel"]}
 
 [lib]
 path = "binding_rust/lib.rs"
