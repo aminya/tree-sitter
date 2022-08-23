@@ -40,6 +40,7 @@ workspace = true
 default = [ "std" ]
 std = [ "regex/std", "regex/perf" ]
 wasm = [ "std", "wasmtime-c-api" ]
+serialization = [ "dep:serde" ]
 logging_lexer = []
 logging_parser = []
 logging_query = []
@@ -50,6 +51,7 @@ logging = [ "logging_lexer", "logging_parser", "logging_query", "logging_changed
 regex = { default-features = false, features = [ "unicode" ], version = "1.12.3" }
 streaming-iterator = "0.1.9"
 tree-sitter-language.workspace = true
+serde = { workspace = true, optional = true }
 
 [dependencies.wasmtime-c-api]
 default-features = false
