@@ -18,6 +18,9 @@ use std::{
     u16,
 };
 
+#[cfg(feature = "serialization")]
+use serde::{Deserialize, Serialize};
+
 /// The latest ABI version that is supported by the current version of the
 /// library.
 ///
@@ -50,6 +53,7 @@ pub struct Tree(NonNull<ffi::TSTree>);
 ///
 /// Rows and columns are zero-based.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 pub struct Point {
     pub row: usize,
     pub column: usize,
@@ -58,6 +62,7 @@ pub struct Point {
 /// A range of positions in a multi-line text document, both in terms of bytes and of
 /// rows and columns.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+#[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 pub struct Range {
     pub start_byte: usize,
     pub end_byte: usize,
@@ -67,6 +72,7 @@ pub struct Range {
 
 /// A summary of a change to a text document.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 pub struct InputEdit {
     pub start_byte: usize,
     pub old_end_byte: usize,
@@ -88,6 +94,7 @@ pub struct Parser(NonNull<ffi::TSParser>);
 
 /// A type of log message.
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 pub enum LogType {
     Parse,
     Lex,
@@ -115,6 +122,7 @@ pub struct Query {
 
 /// A quantifier for captures
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 pub enum CaptureQuantifier {
     Zero,
     ZeroOrOne,
@@ -206,12 +214,14 @@ pub struct QueryCapture<'a> {
 
 /// An error that occurred when trying to assign an incompatible `Language` to a `Parser`.
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 pub struct LanguageError {
     version: usize,
 }
 
 /// An error that occurred in `Parser::set_included_ranges`.
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 pub struct IncludedRangesError(pub usize);
 
 /// An error that occurred when trying to create a `Query`.
@@ -244,6 +254,7 @@ enum TextPredicate {
 
 // TODO: Remove this struct at at some point. If `core::str::lossy::Utf8Lossy`
 // is ever stabilized.
+#[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 pub struct LossyUtf8<'a> {
     bytes: &'a [u8],
     in_replacement: bool,

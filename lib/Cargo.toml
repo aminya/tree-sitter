@@ -27,10 +27,12 @@ logging_parser = []
 logging_query = []
 logging_changed_ranges = []
 logging = ["logging_lexer", "logging_parser", "logging_query", "logging_changed_ranges"]
+serialization = ["serde"]
 
 [dependencies]
 lazy_static = { version = "1.2.0", optional = true }
 regex = "1"
+serde = { version = "1.0.144", features = ["derive"], optional = true }
 
 [build-dependencies]
 cc = { git = "https://github.com/aminya/cc-rs", rev = "74788d4", features = ["parallel"]}
