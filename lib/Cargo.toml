@@ -29,9 +29,11 @@ logging_parser = []
 logging_query = []
 logging_changed_ranges = []
 logging = ["logging_lexer", "logging_parser", "logging_query", "logging_changed_ranges"]
+serialization = ["serde"]
 
 [dependencies]
 regex = "1.9.1"
+serde = { version = "1.0.144", features = ["derive"], optional = true }
 
 [dependencies.wasmtime]
 git = "https://github.com/bytecodealliance/wasmtime"
