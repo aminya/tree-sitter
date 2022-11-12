@@ -37,6 +37,7 @@ pub enum TestEntry {
         name: String,
         children: Vec<TestEntry>,
         file_path: Option<PathBuf>,
+        output_file_path: Option<PathBuf>,
     },
     Example {
         name: String,
@@ -54,6 +55,7 @@ impl Default for TestEntry {
             name: String::new(),
             children: Vec::new(),
             file_path: None,
+            output_file_path: None,
         }
     }
 }
@@ -251,6 +253,7 @@ fn run_tests(
             name,
             children,
             file_path,
+            output_file_path,
         } => {
             if indent_level > 0 {
                 print!("{}", "  ".repeat(indent_level as usize));
@@ -272,8 +275,15 @@ fn run_tests(
                 )?;
             }
 
-            if let Some(file_path) = file_path {
-                if update && failures.len() - failure_count > 0 {
+            let should_write = update && failures.len() - failure_count > 0;
+
+            if let Some(output_file_path) = output_file_path {
+                if should_write {
+                    write_tests_to_output_file(&output_file_path, corrected_entries)?
+                }
+                corrected_entries.clear();
+            } else if let Some(file_path) = file_path {
+                if should_write {
                     write_tests(&file_path, corrected_entries)?;
                 }
                 corrected_entries.clear();
@@ -342,6 +352,14 @@ fn write_tests(
     write_tests_to_buffer(&mut buffer, corrected_entries)
 }
 
+fn write_tests_to_output_file(
+    output_file_path: &Path,
+    corrected_entries: &mut Vec<(String, String, String, usize, usize)>,
+) -> Result<()> {
+    let mut buffer = fs::File::create(output_file_path)?;
+    write_tests_to_output_file_buffer(&mut buffer, corrected_entries)
+}
+
 fn write_tests_to_buffer(
     buffer: &mut impl Write,
     corrected_entries: &Vec<(String, String, String, usize, usize)>,
@@ -364,6 +382,20 @@ fn write_tests_to_buffer(
         )?;
     }
     Ok(())
+}
+
+fn write_tests_to_output_file_buffer(
+    buffer: &mut impl Write,
+    corrected_entries: &mut Vec<(String, String, String, usize, usize)>,
+) -> Result<()> {
+    if corrected_entries.len() != 1 {
+        Err(anyhow!("The output file should have one entry"))
+    } else {
+        let (_name, _input, output, _header_delim_len, _divider_delim_len) =
+            corrected_entries.get(0).unwrap();
+        write!(buffer, "{}\n", output.trim())?;
+        Ok(())
+    }
 }
 
 pub fn parse_tests(path: &Path) -> io::Result<TestEntry> {
@@ -405,7 +437,7 @@ pub fn parse_tests(path: &Path) -> io::Result<TestEntry> {
                 .unwrap_or_default()
                 .cmp(&b.file_name().unwrap_or_default())
         });
-        let children = children
+        let mut children = children
             .iter()
             .map(|path| parse_tests(path))
             .collect::<io::Result<Vec<TestEntry>>>()?;
@@ -428,13 +460,22 @@ pub fn parse_tests(path: &Path) -> io::Result<TestEntry> {
 
                 // construct the test entry
                 let entry = TestEntry::Example {
-                    name: input_name,
+                    name: input_name.clone(),
                     input,
                     has_fields: output_hash_fields(&output),
                     output,
+                    header_delim_len: 0,
+                    divider_delim_len: 0,
                 };
 
-                children.push(entry);
+                let group = TestEntry::Group {
+                    name: input_name,
+                    children: vec![entry],
+                    file_path: Some(input_path),
+                    output_file_path: Some(output_path.to_owned()),
+                };
+
+                children.push(group);
             } else {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -450,6 +491,7 @@ pub fn parse_tests(path: &Path) -> io::Result<TestEntry> {
             name,
             children,
             file_path: None,
+            output_file_path: None,
         })
     } else {
         let content = fs::read_to_string(path)?;
@@ -556,6 +598,7 @@ fn parse_test_content(name: String, content: String, file_path: Option<PathBuf>)
         name,
         children,
         file_path,
+        output_file_path: None,
     }
 }
 
@@ -641,6 +684,7 @@ d
                     },
                 ],
                 file_path: None,
+                output_file_path: None
             }
         );
     }
@@ -699,6 +743,7 @@ abc
                     },
                 ],
                 file_path: None,
+                output_file_path: None
             }
         );
     }
@@ -845,6 +890,7 @@ code
                     }
                 ],
                 file_path: None,
+                output_file_path: None
             }
         );
     }
@@ -935,6 +981,7 @@ NOT A TEST HEADER
                     }
                 ],
                 file_path: None,
+                output_file_path: None
             }
         );
     }
@@ -986,7 +1033,8 @@ code with ----
                         divider_delim_len: 3,
                         has_fields: false,
                     }
-                ]
+                ],
+                output_file_path: None
             }
         );
     }
