@@ -35,7 +35,7 @@ regex = "1"
 serde = { version = "1.0.144", features = ["derive"], optional = true }
 
 [build-dependencies]
-cc = { git = "https://github.com/aminya/cc-rs", rev = "74788d4", features = ["parallel"]}
+cc = { git = "https://github.com/aminya/cc-rs", rev = "5f0c68f", features = ["parallel"]}
 
 [lib]
 path = "binding_rust/lib.rs"
