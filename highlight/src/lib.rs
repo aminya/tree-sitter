@@ -267,6 +267,32 @@ impl Highlighter {
         config: &'a HighlightConfiguration,
         source: &'a [u8],
         cancellation_flag: Option<&'a AtomicUsize>,
+        injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
+    ) -> Result<impl Iterator<Item = Result<HighlightEvent, Error>> + 'a, Error> {
+        let ranges = vec![Range {
+            start_byte: 0,
+            end_byte: usize::MAX,
+            start_point: Point::new(0, 0),
+            end_point: Point::new(usize::MAX, usize::MAX),
+        }];
+        return self.highlight_tree_ranges(
+            ranges,
+            tree,
+            config,
+            source,
+            cancellation_flag,
+            injection_callback,
+        );
+    }
+
+    /// Iterate over the highlighted regions for a given tree and slice of source code within a given range.
+    pub fn highlight_tree_ranges<'a>(
+        &'a mut self,
+        ranges: Vec<Range>,
+        tree: Tree,
+        config: &'a HighlightConfiguration,
+        source: &'a [u8],
+        cancellation_flag: Option<&'a AtomicUsize>,
         mut injection_callback: impl FnMut(&str) -> Option<&'a HighlightConfiguration> + 'a,
     ) -> Result<impl Iterator<Item = Result<HighlightEvent, Error>> + 'a, Error> {
         let layers = HighlightIterLayer::from_tree(
@@ -276,12 +302,7 @@ impl Highlighter {
             &mut injection_callback,
             config,
             0,
-            vec![Range {
-                start_byte: 0,
-                end_byte: usize::MAX,
-                start_point: Point::new(0, 0),
-                end_point: Point::new(usize::MAX, usize::MAX),
-            }],
+            ranges,
         )?;
         Ok(self.highlight_iter(
             layers,
