@@ -418,63 +418,61 @@ impl Loader {
         scanner_path: &Option<PathBuf>,
         library_path: &PathBuf,
     ) -> Result<(), Error> {
-        let mut config = cc::Build::new();
-        config
-            .cargo_metadata(false)
-            .target(BUILD_TARGET)
-            .host(BUILD_TARGET);
+        let out_dir = library_path.parent().unwrap();
 
-        // if the scanner path is a C++ file, then compile as C++
-        let is_cpp = scanner_path
-            .as_ref()
-            .map(|scanner_path| {
-                scanner_path
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    .map_or(false, |ext| ext == "cc")
-            })
-            .unwrap_or(false);
+        // Build parser
+        let (mut parser_build, is_like_msvc) = self.get_cc_build(false);
+        parser_build
+            .include(header_path)
+            .file(parser_path)
+            .out_dir(out_dir)
+            .try_compile("parser")
+            .context("Failed to compile the parser")?;
+        let parser_lib_path = out_dir.join("libparser.a");
 
-        // Add the compiler options
-        let is_like_msvc = self.cc_compile_options(&mut config, is_cpp);
+        // Build scanner
+        let mut scanner_lib_path = None;
+        if let Some(scanner_path) = scanner_path {
+            // if the scanner path is a C++ file, then compile as C++
+            let scanner_is_cpp = scanner_path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map_or(false, |ext| ext == "cc");
+
+            let (mut scanner_build, _) = self.get_cc_build(scanner_is_cpp);
+            scanner_build
+                .include(header_path)
+                .file(scanner_path)
+                .out_dir(out_dir)
+                .try_compile("scanner")
+                .context("Failed to compile the scanner")?;
+
+            scanner_lib_path = Some(out_dir.join("libscanner.a"));
+        }
 
         // Get the compiler from cc-rs
-        let mut command = config.get_compiler().to_command();
+        let mut command = parser_build.get_compiler().to_command();
 
-        // Compile the parser/scanner as a shared libary (cc-rs doesn't support this)
+        // Link the parser and scanner as a whole-archive shared library
         if is_like_msvc {
             command
-                // include
-                .args(header_path)
-                // output
+                .args(&["/nologo", "/LD"])
                 .arg("/link")
-                .arg(format!("/out:{}", library_path.to_str().unwrap()));
-
-            // parser.c
-            command.arg(parser_path);
-            // scanner.c/cc
-            if let Some(scanner_path) = scanner_path.as_ref() {
-                command.arg(scanner_path);
+                .arg(format!("/WHOLEARCHIVE:{}", parser_lib_path.display()));
+            if let Some(scanner_lib_path) = scanner_lib_path {
+                command.arg(format!("/WHOLEARCHIVE:{}", scanner_lib_path.display()));
             }
         } else {
             command
-                // include
-                .arg("-I")
-                .arg(header_path)
-                // output
-                .arg("-o")
-                .arg(&library_path);
-
-            // scanner.c/cc
-            if let Some(scanner_path) = scanner_path.as_ref() {
-                if is_cpp {
-                    command.arg(scanner_path);
-                } else {
-                    command.args(["-xc", "-std=c99"]).arg(scanner_path);
-                }
+                .args(["-shared", "-Wl,--whole-archive"])
+                .arg(parser_lib_path);
+            if let Some(scanner_lib_path) = scanner_lib_path {
+                command.arg(scanner_lib_path);
             }
-            // parser.c
-            command.arg("-xc").arg(parser_path);
+            command
+                .arg("-Wl,--no-whole-archive")
+                .arg("-o")
+                .arg(library_path);
         }
 
         let output = command
@@ -522,7 +520,13 @@ impl Loader {
     }
 
     /// Returns true if the compiler is like MSVC
-    fn cc_compile_options(&self, config: &mut cc::Build, is_cpp: bool) -> bool {
+    fn get_cc_build(&self, is_cpp: bool) -> (cc::Build, bool) {
+        let mut config = cc::Build::new();
+        config
+            .cargo_metadata(false)
+            .target(BUILD_TARGET)
+            .host(BUILD_TARGET);
+
         if is_cpp {
             config.cpp(true);
         }
@@ -546,6 +550,9 @@ impl Loader {
                     .flag("/std:c++14")
                     .flag_if_supported("/std:c++17")
                     .flag_if_supported("/std:c++20");
+            } else {
+                // Prefer a newer C standard
+                config.flag("/std:c99").flag_if_supported("/std:c17");
             }
         } else {
             config
@@ -561,12 +568,16 @@ impl Loader {
                     .flag("-std=c++14")
                     .flag_if_supported("-std=c++17")
                     .flag_if_supported("-std=c++20");
+            } else {
+                // Prefer a newer C standard
+                config.flag("-std=c99").flag_if_supported("-std=c17");
             }
+
             // For conditional compilation of external scanner code when
             // used internally by `tree-siteer parse` and other sub commands.
             config.define("TREE_SITTER_INTERNAL_BUILD", "1");
         }
-        return is_like_msvc;
+        return (config, is_like_msvc);
     }
 
     pub fn compile_parser_to_wasm(
