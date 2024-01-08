@@ -431,10 +431,11 @@ impl Loader {
         let parser_lib_path = out_dir.join("libparser.a");
 
         // Build scanner
+        let mut scanner_is_cpp = false;
         let mut scanner_lib_path = None;
         if let Some(scanner_path) = scanner_path {
             // if the scanner path is a C++ file, then compile as C++
-            let scanner_is_cpp = scanner_path
+            scanner_is_cpp = scanner_path
                 .extension()
                 .and_then(|ext| ext.to_str())
                 .map_or(false, |ext| ext == "cc");
@@ -456,22 +457,32 @@ impl Loader {
         // Link the parser and scanner as a whole-archive shared library
         if is_like_msvc {
             command
-                .args(&["/nologo", "/LD"])
-                .arg("/link")
+                .args(&["/LD", "/link"])
                 .arg(format!("/WHOLEARCHIVE:{}", parser_lib_path.display()));
             if let Some(scanner_lib_path) = scanner_lib_path {
                 command.arg(format!("/WHOLEARCHIVE:{}", scanner_lib_path.display()));
             }
         } else {
             command
-                .args(["-shared", "-Wl,--whole-archive"])
+                .args([
+                    "-shared",
+                    "-Wl,--no-undefined",
+                    "-Wl,--no-allow-shlib-undefined",
+                    "-Wl,--whole-archive",
+                ])
                 .arg(parser_lib_path);
             if let Some(scanner_lib_path) = scanner_lib_path {
                 command.arg(scanner_lib_path);
+                if scanner_is_cpp {
+                    if cfg!(target_os = "macos") {
+                        command.arg("-lc++");
+                    } else {
+                        command.arg("-lstdc++");
+                    }
+                }
             }
             command
-                .arg("-Wl,--no-whole-archive")
-                .arg("-o")
+                .args(["-Wl,--no-whole-archive", "-o"])
                 .arg(library_path);
         }
 
@@ -539,11 +550,7 @@ impl Loader {
 
         let is_like_msvc = config.get_compiler().is_like_msvc();
         if is_like_msvc {
-            config
-                .flag_if_supported("/nologo")
-                // shared library
-                .flag_if_supported("/LD");
-
+            config.flag_if_supported("/nologo");
             if is_cpp {
                 config
                     // Prefer a newer C++ standard
@@ -556,9 +563,7 @@ impl Loader {
             }
         } else {
             config
-                // shared library
-                .shared_flag(true)
-                .flag_if_supported("-Werror=implicit-function-declaration")
+                // shared library                .flag_if_supported("-Werror=implicit-function-declaration")
                 .flag_if_supported("-Wno-reorder-init-list");
 
             if is_cpp {
