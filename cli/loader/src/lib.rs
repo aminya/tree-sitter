@@ -470,7 +470,7 @@ impl Loader {
                 if is_cpp {
                     command.arg(scanner_path);
                 } else {
-                    command.arg("-xc").arg(scanner_path);
+                    command.args(["-xc", "-std=c99"]).arg(scanner_path);
                 }
             }
             // parser.c
@@ -547,8 +547,6 @@ impl Loader {
                     .flag_if_supported("/std:c++17")
                     .flag_if_supported("/std:c++20");
             }
-            // Prefer a newer C standard
-            config.flag("/std:c99").flag_if_supported("/std:c17");
         } else {
             config
                 // shared library
@@ -564,9 +562,6 @@ impl Loader {
                     .flag_if_supported("-std=c++17")
                     .flag_if_supported("-std=c++20");
             }
-            // Prefer a newer C standard
-            config.flag("-std=c99").flag_if_supported("-std=c17");
-
             // For conditional compilation of external scanner code when
             // used internally by `tree-siteer parse` and other sub commands.
             config.define("TREE_SITTER_INTERNAL_BUILD", "1");
