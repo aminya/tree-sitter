@@ -30,6 +30,7 @@ logging_query = []
 logging_changed_ranges = []
 logging = ["logging_lexer", "logging_parser", "logging_query", "logging_changed_ranges"]
 serialization = ["serde"]
+sexpr_format = []
 
 [dependencies]
 regex = "1.9.1"

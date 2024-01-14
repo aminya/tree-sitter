@@ -26,6 +26,11 @@ mod wasm_language;
 #[cfg(feature = "wasm")]
 pub use wasm_language::*;
 
+#[cfg(feature = "sexpr_format")]
+mod sexpr;
+#[cfg(feature = "sexpr_format")]
+pub use sexpr::{format_sexp, format_sexp_indented};
+
 #[cfg(feature = "serialization")]
 use serde::{Deserialize, Serialize};
 
