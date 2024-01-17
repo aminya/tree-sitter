@@ -568,7 +568,6 @@ impl Loader {
 
             if is_cpp {
                 config
-                    .flag_if_supported("-fno-exceptions")
                     // Prefer a newer C++ standard
                     .flag("-std=c++14")
                     .flag_if_supported("-std=c++17")
