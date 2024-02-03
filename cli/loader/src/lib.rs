@@ -422,25 +422,18 @@ impl Loader {
 
         // Build parser
         let (mut parser_build, is_like_msvc) = self.get_cc_build(false);
-        parser_build
-            .include(header_path)
-            .file(parser_path)
-            .out_dir(out_dir)
-            .try_compile("parser")
-            .context("Failed to compile the parser")?;
-        let parser_lib_path = out_dir.join("libparser.a");
+        parser_build.include(header_path).out_dir(out_dir);
 
         // Build scanner
-        let mut scanner_is_cpp = false;
-        let mut scanner_lib_path = None;
+        let mut scanner_lib = None;
         if let Some(scanner_path) = scanner_path {
             // if the scanner path is a C++ file, then compile as C++
-            scanner_is_cpp = scanner_path
+            let scanner_is_cpp = scanner_path
                 .extension()
                 .and_then(|ext| ext.to_str())
                 .map_or(false, |ext| ext == "cc");
 
-            let (mut scanner_build, _) = self.get_cc_build(scanner_is_cpp);
+            let (mut scanner_build, is_like_msvc) = self.get_cc_build(scanner_is_cpp);
             scanner_build
                 .include(header_path)
                 .file(scanner_path)
@@ -448,44 +441,46 @@ impl Loader {
                 .try_compile("scanner")
                 .context("Failed to compile the scanner")?;
 
-            scanner_lib_path = Some(out_dir.join("libscanner.a"));
+            scanner_lib = if is_like_msvc {
+                Some(out_dir.join("scanner.lib"))
+            } else {
+                if scanner_is_cpp {
+                    if cfg!(target_os = "macos") {
+                        parser_build.flag("-lc++");
+                    } else {
+                        parser_build.flag("-lstdc++");
+                    }
+                }
+
+                Some(out_dir.join("libscanner.a"))
+            };
         }
 
-        // Get the compiler from cc-rs
         let mut command = parser_build.get_compiler().to_command();
-
-        // Link the parser and scanner as a whole-archive shared library
         if is_like_msvc {
             command
-                .args(&["/LD", "/link"])
-                .arg(format!("/WHOLEARCHIVE:{}", parser_lib_path.display()));
-            if let Some(scanner_lib_path) = scanner_lib_path {
-                command.arg(format!("/WHOLEARCHIVE:{}", scanner_lib_path.display()));
+                .arg(parser_path)
+                .args(&["/DLL", "/NOLOGO"])
+                .arg(format!("/OUT:{}", library_path.display()));
+
+            if let Some(scanner_lib_path) = &scanner_lib {
+                command.arg("/link").arg(scanner_lib_path);
             }
         } else {
             command
-                .args([
-                    "-shared",
-                    "-Wl,--no-undefined",
-                    "-Wl,--no-allow-shlib-undefined",
-                    "-Wl,--whole-archive",
-                ])
-                .arg(parser_lib_path);
-            if let Some(scanner_lib_path) = scanner_lib_path {
-                command.arg(scanner_lib_path);
-                if scanner_is_cpp {
-                    if cfg!(target_os = "macos") {
-                        command.arg("-lc++");
-                    } else {
-                        command.arg("-lstdc++");
-                    }
-                }
-            }
-            command
-                .args(["-Wl,--no-whole-archive", "-o"])
+                .arg(parser_path)
+                .args(["-shared"])
+                .arg("-o")
                 .arg(library_path);
+
+            if let Some(scanner_lib) = scanner_lib {
+                command
+                    .arg(format!("-L{}", scanner_lib.parent().unwrap().display()))
+                    .arg("-lscanner");
+            }
         }
 
+        eprintln!("running {:?}", command);
         let output = command
             .output()
             .with_context(|| "Failed to execute C compiler")?;
@@ -556,15 +551,17 @@ impl Loader {
                     // Prefer a newer C++ standard
                     .flag("/std:c++14")
                     .flag_if_supported("/std:c++17")
-                    .flag_if_supported("/std:c++20");
+                    .flag_if_supported("/std:c++20")
+                    // Exception handling
+                    .flag("/EHsc");
             } else {
                 // Prefer a newer C standard
-                config.flag("/std:c99").flag_if_supported("/std:c17");
+                config
+                    .flag_if_supported("/std:c99")
+                    .flag_if_supported("/std:c17");
             }
         } else {
-            config
-                // shared library                .flag_if_supported("-Werror=implicit-function-declaration")
-                .flag_if_supported("-Wno-reorder-init-list");
+            config.flag_if_supported("-Wno-reorder-init-list");
 
             if is_cpp {
                 config
