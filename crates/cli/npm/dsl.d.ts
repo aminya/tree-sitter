@@ -50,17 +50,15 @@ type RuleOrLiteral = Rule | RegExp | RustRegex | string;
 
 type GrammarSymbols<RuleName extends string> = {
   [name in RuleName]: SymbolRule<name>;
-} &
-  Record<string, SymbolRule<string>>;
+}
 
 type RuleBuilder<RuleName extends string> = (
   $: GrammarSymbols<RuleName>,
-  previous?: Rule,
 ) => RuleOrLiteral;
 
 type RuleBuilders<
   RuleName extends string,
-  BaseGrammarRuleName extends string
+  BaseGrammarRuleName extends string = never,
 > = {
     [name in RuleName]: RuleBuilder<RuleName | BaseGrammarRuleName>;
   };
@@ -430,8 +428,8 @@ declare function eof(): EOFRule;
  *
  * @param options grammar options
  */
-declare function grammar<RuleName extends string>(
-  options: Grammar<RuleName>,
+declare function grammar<RuleName extends string, BaseGrammarRuleName extends string = never>(
+  options: Grammar<RuleName, BaseGrammarRuleName>,
 ): GrammarSchema<RuleName>;
 
 /**
