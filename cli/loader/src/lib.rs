@@ -549,29 +549,22 @@ impl Loader {
             if is_cpp {
                 config
                     // Prefer a newer C++ standard
-                    .flag("/std:c++14")
-                    .flag_if_supported("/std:c++17")
                     .flag_if_supported("/std:c++20")
                     // Exception handling
                     .flag("/EHsc");
             } else {
                 // Prefer a newer C standard
-                config
-                    .flag_if_supported("/std:c99")
-                    .flag_if_supported("/std:c17");
+                config.flag_if_supported("/std:c17");
             }
         } else {
             config.flag_if_supported("-Wno-reorder-init-list");
 
             if is_cpp {
-                config
-                    // Prefer a newer C++ standard
-                    .flag("-std=c++14")
-                    .flag_if_supported("-std=c++17")
-                    .flag_if_supported("-std=c++20");
+                // Prefer a newer C++ standard
+                config.flag_if_supported("-std=c++20");
             } else {
                 // Prefer a newer C standard
-                config.flag("-std=c99").flag_if_supported("-std=c17");
+                config.flag_if_supported("-std=c17");
             }
 
             // For conditional compilation of external scanner code when
